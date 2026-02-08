@@ -1,0 +1,97 @@
+/* License Manager Admin Styles */
+
+.lm-admin-wrap {
+    max-width: 800px;
+}
+
+/* Card */
+.lm-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px 24px;
+    margin-top: 20px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.lm-card h2 {
+    margin-top: 0;
+    padding-top: 0;
+    border-bottom: 1px solid #f0f0f1;
+    padding-bottom: 12px;
+}
+
+/* Status Card */
+.lm-status-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+}
+
+.lm-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+}
+
+.lm-status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.lm-status-active .lm-status-dot {
+    background: #00a32a;
+    box-shadow: 0 0 0 3px rgba(0, 163, 42, 0.2);
+}
+
+.lm-status-inactive .lm-status-dot {
+    background: #d63638;
+    box-shadow: 0 0 0 3px rgba(214, 54, 56, 0.2);
+}
+
+.lm-last-check {
+    margin: 0;
+    color: #646970;
+    font-size: 13px;
+}
+
+/* License Info Table */
+.lm-info-table {
+    margin-bottom: 16px;
+}
+
+.lm-info-table td {
+    padding: 6px 12px 6px 0;
+    vertical-align: top;
+}
+
+.lm-info-table code {
+    font-size: 13px;
+    padding: 2px 6px;
+    background: #f0f0f1;
+}
+
+/* Action Forms */
+.lm-action-form {
+    margin-top: 12px;
+}
+
+/* Danger Button */
+.lm-btn-danger {
+    color: #d63638 !important;
+    border-color: #d63638 !important;
+}
+
+.lm-btn-danger:hover {
+    background: #d63638 !important;
+    color: #fff !important;
+}
+
+/* Toggle Password Button */
+.lm-toggle-password {
+    vertical-align: middle;
+}
