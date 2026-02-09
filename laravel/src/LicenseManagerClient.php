@@ -205,12 +205,13 @@ class LicenseManagerClient
     private function removeLicenseData(): void
     {
         $path = storage_path('app/.license');
+        $data = $this->getLicenseData();
 
         if (file_exists($path)) {
             unlink($path);
         }
 
-        Cache::forget('license_manager.verification.' . md5($this->getLicenseData() ?? ''));
+        Cache::forget('license_manager.verification.' . md5($data ?? ''));
     }
 
     /**
@@ -232,8 +233,9 @@ class LicenseManagerClient
         $pending = Http::timeout($this->timeout)
             ->withHeaders([
                 'X-API-KEY' => $this->apiKey,
-                'X-URL' => config('app.url'),
-                'X-IP' => request()->server('SERVER_ADDR', '127.0.0.1'),
+                'X-API-URL' => config('app.url'),
+                'X-API-IP' => request()->server('SERVER_ADDR', '127.0.0.1'),
+                'X-API-LANGUAGE' => config('app.locale', 'en'),
             ]);
 
         if (! $this->verifySsl) {

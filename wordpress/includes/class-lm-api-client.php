@@ -161,8 +161,9 @@ class LM_API_Client
         $headers = [
             'Content-Type' => 'application/json',
             'X-API-KEY' => $this->api_key,
-            'X-URL' => home_url(),
-            'X-IP' => $this->get_server_ip(),
+            'X-API-URL' => home_url(),
+            'X-API-IP' => $this->get_server_ip(),
+            'X-API-LANGUAGE' => get_locale(),
         ];
 
         $args = [

@@ -22,8 +22,9 @@
  * REQUIRED HEADERS:
  * - Content-Type: application/json
  * - X-API-KEY: {your-api-key}
- * - X-URL: {your-application-url}
- * - X-IP: {your-server-ip}
+ * - X-API-URL: {your-application-url}
+ * - X-API-IP: {your-server-ip}
+ * - X-API-LANGUAGE: {locale, e.g. "en"}
  *
  * TROUBLESHOOTING:
  * - Connection failed: Check API_URL and API_KEY
@@ -51,6 +52,9 @@ $config = [
 
     // Client name (buyer/customer name)
     'client_name' => 'John Doe',
+
+    // Your application URL (sent in X-API-URL header)
+    'app_url' => 'http://sample-app.local',
 ];
 
 // ============================================================================
@@ -62,6 +66,7 @@ $apiKey = $config['api_key'];
 $productId = $config['product_id'];
 $licenseCode = $config['license_code'];
 $clientName = $config['client_name'];
+$appUrl = $config['app_url'];
 $licenseFile = __DIR__ . '/.license';
 
 define('GREEN', "\033[32m");
@@ -91,7 +96,7 @@ function printMenu(): void
 
 function callApi(string $method, string $endpoint, ?array $data = null): array
 {
-    global $apiUrl, $apiKey;
+    global $apiUrl, $apiKey, $appUrl;
 
     $curl = curl_init();
     $url = $apiUrl . $endpoint;
@@ -103,8 +108,9 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
             'X-API-KEY: ' . $apiKey,
-            'X-URL: http://sample-app.local',
-            'X-IP: 127.0.0.1',
+            'X-API-URL: ' . $appUrl,
+            'X-API-IP: 127.0.0.1',
+            'X-API-LANGUAGE: en',
         ],
     ]);
 

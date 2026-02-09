@@ -46,8 +46,9 @@ All API requests must include:
 ```
 Content-Type: application/json
 X-API-KEY: {your-api-key}
-X-URL: {your-application-url}
-X-IP: {your-server-ip}
+X-API-URL: {your-application-url}
+X-API-IP: {your-server-ip}
+X-API-LANGUAGE: {locale, e.g. "en"}
 ```
 
 ## Quick Start

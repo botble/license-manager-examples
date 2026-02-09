@@ -32,8 +32,9 @@
  * REQUIRED HEADERS:
  * - Content-Type: application/json
  * - X-API-KEY: {your-internal-api-key}
- * - X-URL: {your-server-url}
- * - X-IP: {your-server-ip}
+ * - X-API-URL: {your-server-url}
+ * - X-API-IP: {your-server-ip}
+ * - X-API-LANGUAGE: {locale, e.g. "en"}
  *
  * NOTE: Internal API keys have elevated permissions. Keep them secure!
  */
@@ -49,10 +50,10 @@ $config = [
     // Your INTERNAL API Key (from API Settings page - must be internal type!)
     'api_key' => 'your-internal-api-key-here',
 
-    // Your backend server URL (for X-URL header)
+    // Your backend server URL (for X-API-URL header)
     'server_url' => 'https://your-backend-server.com',
 
-    // Your backend server IP (for X-IP header)
+    // Your backend server IP (for X-API-IP header)
     'server_ip' => '127.0.0.1',
 ];
 
@@ -112,8 +113,9 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
     $headers = [
         'Content-Type: application/json',
         'X-API-KEY: ' . $apiKey,
-        'X-URL: ' . $serverUrl,
-        'X-IP: ' . $serverIp,
+        'X-API-URL: ' . $serverUrl,
+        'X-API-IP: ' . $serverIp,
+        'X-API-LANGUAGE: en',
     ];
 
     curl_setopt_array($curl, [

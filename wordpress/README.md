@@ -53,8 +53,9 @@ All API requests include these headers:
 ```
 Content-Type: application/json
 X-API-KEY: {your-api-key}
-X-URL: {your-site-url}
-X-IP: {your-server-ip}
+X-API-URL: {your-site-url}
+X-API-IP: {your-server-ip}
+X-API-LANGUAGE: {locale, e.g. "en"}
 ```
 
 ### License File
