@@ -24,7 +24,8 @@ Used by client applications to manage their own licenses.
 | `/api/external/license/deactivate` | POST | Deactivate a license |
 | `/api/external/update/check` | POST | Check for product updates |
 | `/api/external/update/latest` | POST | Get latest version info |
-| `/api/external/update/{version}/download/{type}` | POST | Download update files |
+| `/api/external/update/{version}/download/{type}` | POST | Download update files (send `license_data` in body) |
+| `/api/external/update/{version}/download/{type}/size` | GET | Get update file size |
 
 ### Internal API (Server-to-server)
 
