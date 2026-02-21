@@ -1,0 +1,207 @@
+@page "/"
+@using LicenseManager
+@inject LicenseManagerClient LicenseClient
+
+<div class="container mt-4">
+    <h2>License Manager</h2>
+    <hr />
+
+    @if (!string.IsNullOrEmpty(_statusMessage))
+    {
+        <div class="alert @(_isSuccess ? "alert-success" : "alert-danger") alert-dismissible">
+            @_statusMessage
+            <button type="button" class="btn-close" @onclick="() => _statusMessage = null"></button>
+        </div>
+    }
+
+    <!-- Connection Check -->
+    <div class="card mb-3">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <span>Server Connection</span>
+            <button class="btn btn-outline-primary btn-sm" @onclick="CheckConnection" disabled="@_loading">
+                @(_loading ? "Checking..." : "Test Connection")
+            </button>
+        </div>
+    </div>
+
+    <!-- Activate License -->
+    <div class="card mb-3">
+        <div class="card-header">Activate License</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input @bind="_productId" class="form-control" placeholder="Product ID" />
+                </div>
+                <div class="col-md-4">
+                    <input @bind="_licenseCode" class="form-control" placeholder="License Code" />
+                </div>
+                <div class="col-md-3">
+                    <input @bind="_clientName" class="form-control" placeholder="Client Name" />
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-primary w-100" @onclick="ActivateLicense" disabled="@_loading">
+                        Activate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verify / Deactivate -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>License Status:</strong>
+                        @if (LicenseClient.HasLicenseFile())
+                        {
+                            <span class="badge bg-success ms-2">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary ms-2">Not Activated</span>
+                        }
+                    </div>
+                    <button class="btn btn-outline-success btn-sm" @onclick="VerifyLicense" disabled="@_loading">
+                        Verify
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <span>Deactivate current license</span>
+                    <button class="btn btn-outline-danger btn-sm" @onclick="DeactivateLicense" disabled="@_loading">
+                        Deactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Check for Updates -->
+    <div class="card mb-3">
+        <div class="card-header">Check for Updates</div>
+        <div class="card-body">
+            <div class="row g-2">
+                <div class="col-md-5">
+                    <input @bind="_updateProductId" class="form-control" placeholder="Product ID" />
+                </div>
+                <div class="col-md-5">
+                    <input @bind="_currentVersion" class="form-control" placeholder="Current Version (e.g. 1.0.0)" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-info w-100 text-white" @onclick="CheckForUpdate" disabled="@_loading">
+                        Check
+                    </button>
+                </div>
+            </div>
+
+            @if (_updateResult is { UpdateAvailable: true })
+            {
+                <div class="alert alert-info mt-3 mb-0">
+                    <strong>Update available:</strong> v@(_updateResult.Version)
+                    <br /><small>@_updateResult.Summary</small>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _productId = "ABC12345";
+    private string _licenseCode = "";
+    private string _clientName = "";
+    private string _updateProductId = "ABC12345";
+    private string _currentVersion = "1.0.0";
+    private string? _statusMessage;
+    private bool _isSuccess;
+    private bool _loading;
+    private UpdateCheckResponse? _updateResult;
+
+    private async Task CheckConnection()
+    {
+        _loading = true;
+        try
+        {
+            var result = await LicenseClient.CheckConnectionAsync();
+            SetStatus(result.IsActive, result.Message ?? "No response");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(false, ex.Message);
+        }
+        _loading = false;
+    }
+
+    private async Task ActivateLicense()
+    {
+        _loading = true;
+        try
+        {
+            var result = await LicenseClient.ActivateLicenseAsync(
+                _productId, _licenseCode, _clientName);
+            SetStatus(result.IsActive, result.Message ?? "No response");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(false, ex.Message);
+        }
+        _loading = false;
+    }
+
+    private async Task VerifyLicense()
+    {
+        _loading = true;
+        try
+        {
+            var result = await LicenseClient.VerifyLicenseAsync(_productId);
+            SetStatus(result.IsActive, result.Message ?? "No response");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(false, ex.Message);
+        }
+        _loading = false;
+    }
+
+    private async Task DeactivateLicense()
+    {
+        _loading = true;
+        try
+        {
+            var result = await LicenseClient.DeactivateLicenseAsync(_productId);
+            SetStatus(result.IsActive || result.Status, result.Message ?? "No response");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(false, ex.Message);
+        }
+        _loading = false;
+    }
+
+    private async Task CheckForUpdate()
+    {
+        _loading = true;
+        try
+        {
+            _updateResult = await LicenseClient.CheckForUpdateAsync(
+                _updateProductId, _currentVersion);
+            SetStatus(_updateResult.Status, _updateResult.Message ?? "No response");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(false, ex.Message);
+            _updateResult = null;
+        }
+        _loading = false;
+    }
+
+    private void SetStatus(bool success, string message)
+    {
+        _isSuccess = success;
+        _statusMessage = message;
+    }
+}

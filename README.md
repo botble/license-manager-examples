@@ -9,6 +9,9 @@ Code examples demonstrating how to integrate with the [License Manager](https://
 | [PHP](./php/) | Standalone PHP scripts using cURL - good for any PHP application |
 | [WordPress](./wordpress/) | WordPress plugin with admin UI, auto-updates, and WP-Cron verification |
 | [Laravel](./laravel/) | Laravel package with service provider, Artisan commands, and middleware |
+| [.NET / C#](./dotnet/) | Console/desktop app, ASP.NET Core API, and Blazor Server examples (.NET 8+) |
+| [Java](./java/) | Maven project with reusable HttpClient and interactive CLI (Java 17+) |
+| [Ruby on Rails](./rails/) | Client library, Rails controller, and Rack middleware for license gating |
 
 ## API Overview
 
@@ -24,8 +27,7 @@ Used by client applications to manage their own licenses.
 | `/api/external/license/deactivate` | POST | Deactivate a license |
 | `/api/external/update/check` | POST | Check for product updates |
 | `/api/external/update/latest` | POST | Get latest version info |
-| `/api/external/update/{version}/download/{type}` | POST | Download update files (send `license_data` in body) |
-| `/api/external/update/{version}/download/{type}/size` | GET | Get update file size |
+| `/api/external/update/{version}/download/{type}` | POST | Download update files |
 
 ### Internal API (Server-to-server)
 
