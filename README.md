@@ -12,6 +12,8 @@ Code examples demonstrating how to integrate with the [License Manager](https://
 | [.NET / C#](./dotnet/) | Console/desktop app, ASP.NET Core API, and Blazor Server examples (.NET 8+) |
 | [Java](./java/) | Maven project with reusable HttpClient and interactive CLI (Java 17+) |
 | [Ruby on Rails](./rails/) | Client library, Rails controller, and Rack middleware for license gating |
+| [Python](./python/) | Client using `requests` library with interactive CLI (Python 3.9+) |
+| [Node.js](./nodejs/) | Zero-dependency client (built-in fetch), CLI demo, and Express.js server (Node 18+) |
 
 ## API Overview
 
