@@ -50,6 +50,7 @@ Endpoints:
 | POST | `/license/deactivate/{productId}` | Deactivate license |
 | POST | `/license/update-check` | Check for updates |
 | GET | `/license/latest/{productId}` | Get latest version |
+| POST | `/license/update-download` | Download update file |
 
 ### Blazor Server
 

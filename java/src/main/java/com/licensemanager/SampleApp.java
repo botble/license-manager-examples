@@ -7,6 +7,8 @@ import com.licensemanager.LicenseManagerClient.ApiResponse;
 import com.licensemanager.LicenseManagerClient.Config;
 import com.licensemanager.LicenseManagerClient.UpdateCheckResponse;
 
+import java.nio.file.Path;
+
 /**
  * Interactive CLI sample demonstrating License Manager API integration.
  *
@@ -38,7 +40,8 @@ public class SampleApp {
                 System.out.println("3. Verify License");
                 System.out.println("4. Deactivate License");
                 System.out.println("5. Check for Updates");
-                System.out.println("6. Exit\n");
+                System.out.println("6. Download Update");
+                System.out.println("7. Exit\n");
                 System.out.print("Choice: ");
 
                 String choice = scanner.nextLine().trim();
@@ -74,6 +77,15 @@ public class SampleApp {
                             }
                         }
                         case "6" -> {
+                            System.out.print("Update ID (from update check): ");
+                            String updateId = scanner.nextLine().trim();
+                            System.out.print("Type (main/sql) [main]: ");
+                            String dlType = scanner.nextLine().trim();
+                            if (dlType.isEmpty()) dlType = "main";
+                            Path filePath = client.downloadUpdate(updateId, ".", dlType);
+                            System.out.println("  [OK] Downloaded: " + filePath);
+                        }
+                        case "7" -> {
                             System.out.println("Goodbye!");
                             return;
                         }

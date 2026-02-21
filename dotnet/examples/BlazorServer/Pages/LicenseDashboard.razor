@@ -101,9 +101,22 @@
 
             @if (_updateResult is { UpdateAvailable: true })
             {
-                <div class="alert alert-info mt-3 mb-0">
+                <div class="alert alert-info mt-3">
                     <strong>Update available:</strong> v@(_updateResult.Version)
                     <br /><small>@_updateResult.Summary</small>
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-4">
+                        <select @bind="_downloadType" class="form-select">
+                            <option value="main">Main (zip)</option>
+                            <option value="sql">SQL migration</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-success w-100" @onclick="DownloadUpdate" disabled="@_loading">
+                            Download
+                        </button>
+                    </div>
                 </div>
             }
         </div>
@@ -116,6 +129,7 @@
     private string _clientName = "";
     private string _updateProductId = "ABC12345";
     private string _currentVersion = "1.0.0";
+    private string _downloadType = "main";
     private string? _statusMessage;
     private bool _isSuccess;
     private bool _loading;
@@ -195,6 +209,25 @@
         {
             SetStatus(false, ex.Message);
             _updateResult = null;
+        }
+        _loading = false;
+    }
+
+    private async Task DownloadUpdate()
+    {
+        if (_updateResult?.UpdateId is null) return;
+        _loading = true;
+        try
+        {
+            var outputDir = Path.Combine(Directory.GetCurrentDirectory(), "updates");
+            Directory.CreateDirectory(outputDir);
+            var filePath = await LicenseClient.DownloadUpdateAsync(
+                _updateResult.UpdateId, outputDir, _downloadType);
+            SetStatus(true, $"Downloaded to {filePath}");
+        }
+        catch (Exception ex)
+        {
+            SetStatus(false, ex.Message);
         }
         _loading = false;
     }

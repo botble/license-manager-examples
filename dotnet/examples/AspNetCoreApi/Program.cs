@@ -71,6 +71,25 @@ app.MapGet("/license/latest/{productId}", async (string productId, LicenseManage
     return Results.Ok(result);
 });
 
+// Download an update file
+app.MapPost("/license/update-download", async (UpdateDownloadRequest req, LicenseManagerClient client) =>
+{
+    try
+    {
+        var outputDir = Path.Combine(Directory.GetCurrentDirectory(), "updates");
+        Directory.CreateDirectory(outputDir);
+
+        var filePath = await client.DownloadUpdateAsync(
+            req.UpdateId, outputDir, req.Type ?? "main");
+
+        return Results.Ok(new { success = true, path = filePath });
+    }
+    catch (HttpRequestException ex)
+    {
+        return Results.BadRequest(new { success = false, message = ex.Message });
+    }
+});
+
 // Middleware: verify license on every request (optional - see README)
 // app.Use(async (context, next) =>
 // {
@@ -91,3 +110,4 @@ app.Run();
 
 public record ActivateLicenseRequest(string ProductId, string LicenseCode, string ClientName);
 public record UpdateCheckRequest(string ProductId, string CurrentVersion);
+public record UpdateDownloadRequest(string UpdateId, string? Type);

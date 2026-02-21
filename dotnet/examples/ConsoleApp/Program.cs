@@ -27,7 +27,8 @@ while (true)
     Console.WriteLine("3. Verify License");
     Console.WriteLine("4. Deactivate License");
     Console.WriteLine("5. Check for Updates");
-    Console.WriteLine("6. Exit\n");
+    Console.WriteLine("6. Download Update");
+    Console.WriteLine("7. Exit\n");
     Console.Write("Choice: ");
 
     var choice = Console.ReadLine()?.Trim();
@@ -71,6 +72,24 @@ while (true)
             break;
 
         case "6":
+            Console.Write("Update ID (from update check): ");
+            var updateId = Console.ReadLine()?.Trim() ?? "";
+            Console.Write("Type (main/sql) [main]: ");
+            var dlType = Console.ReadLine()?.Trim();
+            if (string.IsNullOrEmpty(dlType)) dlType = "main";
+            try
+            {
+                var filePath = await client.DownloadUpdateAsync(
+                    updateId, Directory.GetCurrentDirectory(), dlType);
+                Console.WriteLine($"  [OK] Downloaded: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  [FAILED] Download: {ex.Message}");
+            }
+            break;
+
+        case "7":
             Console.WriteLine("Goodbye!");
             return;
 
