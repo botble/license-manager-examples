@@ -78,29 +78,29 @@ function printHeader(): void
     echo "\n";
     echo CYAN . "================================================\n";
     echo "  License Manager Internal API - Sample App\n";
-    echo "================================================" . RESET . "\n\n";
+    echo '================================================' . RESET . "\n\n";
 }
 
 function printMenu(): void
 {
-    echo BOLD . "CONNECTION" . RESET . "\n";
+    echo BOLD . 'CONNECTION' . RESET . "\n";
     echo "  1. Check API Connection\n\n";
 
-    echo BOLD . "PRODUCTS" . RESET . "\n";
+    echo BOLD . 'PRODUCTS' . RESET . "\n";
     echo "  2. List Products\n";
     echo "  3. Get Product Details\n";
     echo "  4. Create Product\n\n";
 
-    echo BOLD . "LICENSES" . RESET . "\n";
+    echo BOLD . 'LICENSES' . RESET . "\n";
     echo "  5. List Licenses\n";
     echo "  6. Get License Details\n";
     echo "  7. Create License\n";
     echo "  8. Block/Unblock License\n\n";
 
-    echo BOLD . "OTHER" . RESET . "\n";
+    echo BOLD . 'OTHER' . RESET . "\n";
     echo "  0. Exit\n\n";
 
-    echo "Enter choice: ";
+    echo 'Enter choice: ';
 }
 
 function callApi(string $method, string $endpoint, ?array $data = null): array
@@ -131,15 +131,18 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
             if ($data) {
                 curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
             }
+
             break;
         case 'PUT':
             curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'PUT');
             if ($data) {
                 curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
             }
+
             break;
         case 'DELETE':
             curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'DELETE');
+
             break;
     }
 
@@ -182,14 +185,14 @@ function printResult(array $result): void
 
 function checkConnection(): void
 {
-    echo "\n" . YELLOW . "Checking API connection..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Checking API connection...' . RESET . "\n";
     $result = callApi('GET', '/api/internal/connection-check');
     printResult($result);
 }
 
 function listProducts(): void
 {
-    echo "\n" . YELLOW . "Fetching products..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Fetching products...' . RESET . "\n";
     $result = callApi('GET', '/api/internal/products');
     printResult($result);
 }
@@ -200,25 +203,25 @@ function getProduct(): void
     $productId = prompt('Enter Product ID or Unique ID');
 
     if (! $productId) {
-        echo RED . "Product ID is required." . RESET . "\n";
+        echo RED . 'Product ID is required.' . RESET . "\n";
 
         return;
     }
 
-    echo YELLOW . "Fetching product details..." . RESET . "\n";
+    echo YELLOW . 'Fetching product details...' . RESET . "\n";
     $result = callApi('GET', '/api/internal/products/' . $productId);
     printResult($result);
 }
 
 function createProduct(): void
 {
-    echo "\n" . BOLD . "Create New Product" . RESET . "\n";
+    echo "\n" . BOLD . 'Create New Product' . RESET . "\n";
 
     $name = prompt('Product name');
     $envatoId = prompt('Envato Item ID (optional)');
 
     if (! $name) {
-        echo RED . "Product name is required." . RESET . "\n";
+        echo RED . 'Product name is required.' . RESET . "\n";
 
         return;
     }
@@ -232,14 +235,14 @@ function createProduct(): void
         $data['envato_id'] = $envatoId;
     }
 
-    echo YELLOW . "Creating product..." . RESET . "\n";
+    echo YELLOW . 'Creating product...' . RESET . "\n";
     $result = callApi('POST', '/api/internal/products', $data);
     printResult($result);
 }
 
 function listLicenses(): void
 {
-    echo "\n" . YELLOW . "Fetching licenses..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Fetching licenses...' . RESET . "\n";
     $result = callApi('GET', '/api/internal/product-licenses');
     printResult($result);
 }
@@ -250,19 +253,19 @@ function getLicense(): void
     $licenseId = prompt('Enter License ID');
 
     if (! $licenseId) {
-        echo RED . "License ID is required." . RESET . "\n";
+        echo RED . 'License ID is required.' . RESET . "\n";
 
         return;
     }
 
-    echo YELLOW . "Fetching license details..." . RESET . "\n";
+    echo YELLOW . 'Fetching license details...' . RESET . "\n";
     $result = callApi('GET', '/api/internal/product-licenses/' . $licenseId);
     printResult($result);
 }
 
 function createLicense(): void
 {
-    echo "\n" . BOLD . "Create New License" . RESET . "\n";
+    echo "\n" . BOLD . 'Create New License' . RESET . "\n";
 
     $productId = prompt('Product ID or Unique ID');
     $licenseCode = prompt('License code (leave empty for auto-generate)');
@@ -271,7 +274,7 @@ function createLicense(): void
     $parallelUses = prompt('Parallel uses limit', '1');
 
     if (! $productId) {
-        echo RED . "Product ID is required." . RESET . "\n";
+        echo RED . 'Product ID is required.' . RESET . "\n";
 
         return;
     }
@@ -291,29 +294,29 @@ function createLicense(): void
         $data['client_email'] = $email;
     }
 
-    echo YELLOW . "Creating license..." . RESET . "\n";
+    echo YELLOW . 'Creating license...' . RESET . "\n";
     $result = callApi('POST', '/api/internal/product-licenses', $data);
     printResult($result);
 }
 
 function toggleBlockLicense(): void
 {
-    echo "\n" . BOLD . "Block/Unblock License" . RESET . "\n";
+    echo "\n" . BOLD . 'Block/Unblock License' . RESET . "\n";
 
     $licenseId = prompt('Enter License ID');
     $action = prompt('Action (block/unblock)', 'block');
 
     if (! $licenseId) {
-        echo RED . "License ID is required." . RESET . "\n";
+        echo RED . 'License ID is required.' . RESET . "\n";
 
         return;
     }
 
     if ($action === 'block') {
-        echo YELLOW . "Blocking license..." . RESET . "\n";
+        echo YELLOW . 'Blocking license...' . RESET . "\n";
         $result = callApi('POST', '/api/internal/blocked-product-licenses/' . $licenseId);
     } else {
-        echo YELLOW . "Unblocking license..." . RESET . "\n";
+        echo YELLOW . 'Unblocking license...' . RESET . "\n";
         $result = callApi('DELETE', '/api/internal/blocked-product-licenses/' . $licenseId);
     }
 
@@ -329,33 +332,41 @@ while (true) {
     switch ($choice) {
         case '1':
             checkConnection();
+
             break;
         case '2':
             listProducts();
+
             break;
         case '3':
             getProduct();
+
             break;
         case '4':
             createProduct();
+
             break;
         case '5':
             listLicenses();
+
             break;
         case '6':
             getLicense();
+
             break;
         case '7':
             createLicense();
+
             break;
         case '8':
             toggleBlockLicense();
+
             break;
         case '0':
             echo "\nGoodbye!\n";
             exit(0);
         default:
-            echo RED . "Invalid choice." . RESET . "\n";
+            echo RED . 'Invalid choice.' . RESET . "\n";
     }
 
     echo "\n";

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * License Manager API Client
  *
@@ -117,9 +118,6 @@ class LM_API_Client
     /**
      * Get the download URL for an update.
      *
-     * Note: The download endpoint requires a POST request with license_data.
-     * Use download_update() for authenticated downloads.
-     *
      * @param string $version_id Version ID (vid) from update check
      * @param string $type       "main" or "sql"
      * @return string
@@ -127,81 +125,6 @@ class LM_API_Client
     public function get_update_download_url(string $version_id, string $type = 'main'): string
     {
         return $this->api_url . '/api/external/update/' . $version_id . '/download/' . $type;
-    }
-
-    /**
-     * Download an update file with license authentication.
-     *
-     * Sends license_data in the POST body for authenticated downloads.
-     *
-     * @param string $version_id   Version ID from update check
-     * @param string $type         "main" or "sql"
-     * @param string $license_data Encrypted license data from activation
-     * @param string $save_path    Path to save the downloaded file
-     * @return array{success: bool, path: ?string, message: string}
-     */
-    public function download_update(string $version_id, string $type, string $license_data, string $save_path): array
-    {
-        $url = $this->get_update_download_url($version_id, $type);
-
-        $args = [
-            'method' => 'POST',
-            'headers' => [
-                'Content-Type' => 'application/json',
-                'X-API-KEY' => $this->api_key,
-                'X-API-URL' => home_url(),
-                'X-API-IP' => $this->get_server_ip(),
-                'X-API-LANGUAGE' => get_locale(),
-            ],
-            'timeout' => 120,
-            'sslverify' => true,
-            'body' => wp_json_encode(['license_data' => $license_data]),
-        ];
-
-        $response = wp_remote_request($url, $args);
-
-        if (is_wp_error($response)) {
-            return [
-                'success' => false,
-                'path' => null,
-                'message' => $response->get_error_message(),
-            ];
-        }
-
-        $code = wp_remote_retrieve_response_code($response);
-
-        if ($code === 401) {
-            return [
-                'success' => false,
-                'path' => null,
-                'message' => 'License validation failed.',
-            ];
-        }
-
-        if ($code !== 200) {
-            return [
-                'success' => false,
-                'path' => null,
-                'message' => 'Download failed with HTTP ' . $code,
-            ];
-        }
-
-        $body = wp_remote_retrieve_body($response);
-
-        global $wp_filesystem;
-
-        if (empty($wp_filesystem)) {
-            require_once ABSPATH . '/wp-admin/includes/file.php';
-            WP_Filesystem();
-        }
-
-        $wp_filesystem->put_contents($save_path, $body, FS_CHMOD_FILE);
-
-        return [
-            'success' => true,
-            'path' => $save_path,
-            'message' => 'Update downloaded successfully.',
-        ];
     }
 
     /**

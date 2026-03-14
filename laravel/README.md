@@ -83,10 +83,6 @@ public function check(): array
 
     // Check for updates
     $result = $this->license->checkUpdate('1.0.0');
-
-    // Download update (sends license_data for authentication)
-    $result = $this->license->downloadUpdate($versionId, 'main');
-    // $result['path'] contains the saved file path
 }
 ```
 

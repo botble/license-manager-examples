@@ -14,12 +14,10 @@
  * 2. Run: php sample-app.php
  *
  * API ENDPOINTS:
- * - GET  /api/external/connection-check                     - Test API connectivity
- * - POST /api/external/license/activate                     - Activate a license
- * - POST /api/external/license/verify                       - Verify license validity
- * - POST /api/external/license/deactivate                   - Deactivate a license
- * - POST /api/external/update/check                         - Check for product updates
- * - POST /api/external/update/{version}/download/{type}     - Download update file
+ * - GET  /api/external/connection-check     - Test API connectivity
+ * - POST /api/external/license/activate     - Activate a license
+ * - POST /api/external/license/verify       - Verify license validity
+ * - POST /api/external/license/deactivate   - Deactivate a license
  *
  * REQUIRED HEADERS:
  * - Content-Type: application/json
@@ -82,7 +80,7 @@ function printHeader(): void
     echo "\n";
     echo CYAN . "========================================\n";
     echo "  License Manager API - Sample App\n";
-    echo "========================================" . RESET . "\n\n";
+    echo '========================================' . RESET . "\n\n";
 }
 
 function printMenu(): void
@@ -92,10 +90,8 @@ function printMenu(): void
     echo "  2. Activate License\n";
     echo "  3. Verify License\n";
     echo "  4. Deactivate License\n";
-    echo "  5. Check for Updates\n";
-    echo "  6. Download Update\n";
-    echo "  7. Exit\n\n";
-    echo "Enter choice (1-7): ";
+    echo "  5. Exit\n\n";
+    echo 'Enter choice (1-5): ';
 }
 
 function callApi(string $method, string $endpoint, ?array $data = null): array
@@ -142,17 +138,17 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
 
 function checkConnection(): void
 {
-    echo "\n" . YELLOW . "Checking API connection..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Checking API connection...' . RESET . "\n";
 
     $result = callApi('GET', '/api/external/connection-check');
 
     if ($result['http_code'] === 200 && ($result['data']['is_active'] ?? false)) {
-        echo GREEN . "Connection successful!" . RESET . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'N/A') . "\n";
+        echo GREEN . 'Connection successful!' . RESET . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'N/A') . "\n";
     } else {
-        echo RED . "Connection failed!" . RESET . "\n";
-        echo "  HTTP Code: " . $result['http_code'] . "\n";
-        echo "  Error: " . ($result['error'] ?? $result['data']['message'] ?? 'Unknown') . "\n";
+        echo RED . 'Connection failed!' . RESET . "\n";
+        echo '  HTTP Code: ' . $result['http_code'] . "\n";
+        echo '  Error: ' . ($result['error'] ?? $result['data']['message'] ?? 'Unknown') . "\n";
     }
 }
 
@@ -160,7 +156,7 @@ function activateLicense(): void
 {
     global $productId, $licenseCode, $clientName, $licenseFile;
 
-    echo "\n" . YELLOW . "Activating license..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Activating license...' . RESET . "\n";
 
     $result = callApi('POST', '/api/external/license/activate', [
         'product_id' => $productId,
@@ -170,8 +166,8 @@ function activateLicense(): void
     ]);
 
     if ($result['http_code'] === 200 && ($result['data']['is_active'] ?? false)) {
-        echo GREEN . "License activated!" . RESET . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'N/A') . "\n";
+        echo GREEN . 'License activated!' . RESET . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'N/A') . "\n";
 
         $licenseData = $result['data']['lic_response'] ?? $result['data']['data']['license_data'] ?? null;
 
@@ -180,9 +176,9 @@ function activateLicense(): void
             echo "  License data saved to: .license\n";
         }
     } else {
-        echo RED . "Activation failed!" . RESET . "\n";
-        echo "  HTTP Code: " . $result['http_code'] . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'Unknown error') . "\n";
+        echo RED . 'Activation failed!' . RESET . "\n";
+        echo '  HTTP Code: ' . $result['http_code'] . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'Unknown error') . "\n";
     }
 }
 
@@ -190,10 +186,10 @@ function verifyLicense(): void
 {
     global $productId, $licenseFile;
 
-    echo "\n" . YELLOW . "Verifying license..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Verifying license...' . RESET . "\n";
 
     if (! file_exists($licenseFile)) {
-        echo RED . "No license file found. Activate a license first." . RESET . "\n";
+        echo RED . 'No license file found. Activate a license first.' . RESET . "\n";
 
         return;
     }
@@ -206,11 +202,11 @@ function verifyLicense(): void
     ]);
 
     if ($result['http_code'] === 200 && ($result['data']['is_active'] ?? false)) {
-        echo GREEN . "License is valid!" . RESET . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'N/A') . "\n";
+        echo GREEN . 'License is valid!' . RESET . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'N/A') . "\n";
     } else {
-        echo RED . "License is invalid!" . RESET . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'Unknown error') . "\n";
+        echo RED . 'License is invalid!' . RESET . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'Unknown error') . "\n";
     }
 }
 
@@ -218,10 +214,10 @@ function deactivateLicense(): void
 {
     global $productId, $licenseFile;
 
-    echo "\n" . YELLOW . "Deactivating license..." . RESET . "\n";
+    echo "\n" . YELLOW . 'Deactivating license...' . RESET . "\n";
 
     if (! file_exists($licenseFile)) {
-        echo RED . "No license file found. Activate a license first." . RESET . "\n";
+        echo RED . 'No license file found. Activate a license first.' . RESET . "\n";
 
         return;
     }
@@ -234,133 +230,15 @@ function deactivateLicense(): void
     ]);
 
     if ($result['http_code'] === 200 && ($result['data']['is_active'] ?? false)) {
-        echo GREEN . "License deactivated!" . RESET . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'N/A') . "\n";
+        echo GREEN . 'License deactivated!' . RESET . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'N/A') . "\n";
 
         @unlink($licenseFile);
         echo "  License file removed.\n";
     } else {
-        echo RED . "Deactivation failed!" . RESET . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'Unknown error') . "\n";
+        echo RED . 'Deactivation failed!' . RESET . "\n";
+        echo '  Message: ' . ($result['data']['message'] ?? 'Unknown error') . "\n";
     }
-}
-
-function checkForUpdate(): void
-{
-    global $productId;
-
-    echo "\n" . YELLOW . "Checking for updates..." . RESET . "\n";
-
-    echo "Enter current version (e.g. 1.0.0): ";
-    $currentVersion = trim(fgets(STDIN));
-
-    if (! $currentVersion) {
-        echo RED . "Version is required." . RESET . "\n";
-
-        return;
-    }
-
-    $result = callApi('POST', '/api/external/update/check', [
-        'product_id' => $productId,
-        'current_version' => $currentVersion,
-    ]);
-
-    if ($result['http_code'] === 200) {
-        if ($result['data']['update_available'] ?? false) {
-            echo GREEN . "Update available!" . RESET . "\n";
-            echo "  Version: " . ($result['data']['version'] ?? 'N/A') . "\n";
-            echo "  Update ID: " . ($result['data']['update_id'] ?? 'N/A') . "\n";
-        } else {
-            echo CYAN . "Already up to date." . RESET . "\n";
-        }
-
-        echo "  " . json_encode($result['data'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
-    } else {
-        echo RED . "Update check failed!" . RESET . "\n";
-        echo "  HTTP Code: " . $result['http_code'] . "\n";
-        echo "  Message: " . ($result['data']['message'] ?? 'Unknown error') . "\n";
-    }
-}
-
-function downloadUpdate(): void
-{
-    global $apiUrl, $apiKey, $appUrl, $licenseFile;
-
-    echo "\n" . YELLOW . "Downloading update..." . RESET . "\n";
-
-    echo "Enter Version ID (from update check): ";
-    $versionId = trim(fgets(STDIN));
-
-    if (! $versionId) {
-        echo RED . "Version ID is required." . RESET . "\n";
-
-        return;
-    }
-
-    echo "Enter type (main/sql) [main]: ";
-    $type = trim(fgets(STDIN)) ?: 'main';
-
-    $data = [];
-
-    if (file_exists($licenseFile)) {
-        $data['license_data'] = file_get_contents($licenseFile);
-    }
-
-    $url = $apiUrl . '/api/external/update/' . urlencode($versionId) . '/download/' . urlencode($type);
-
-    $curl = curl_init();
-    curl_setopt_array($curl, [
-        CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT => 120,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => json_encode($data),
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'X-API-KEY: ' . $apiKey,
-            'X-API-URL: ' . $appUrl,
-            'X-API-IP: 127.0.0.1',
-            'X-API-LANGUAGE: en',
-        ],
-    ]);
-
-    $response = curl_exec($curl);
-    $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    $contentType = curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
-    $error = curl_error($curl);
-    curl_close($curl);
-
-    if ($error) {
-        echo RED . "Download failed: $error" . RESET . "\n";
-
-        return;
-    }
-
-    if ($httpCode === 401) {
-        echo RED . "Unauthorized! License validation failed." . RESET . "\n";
-
-        return;
-    }
-
-    if ($httpCode === 404) {
-        echo RED . "Not found! Version ID or file type is invalid." . RESET . "\n";
-
-        return;
-    }
-
-    if ($httpCode !== 200) {
-        echo RED . "Download failed (HTTP $httpCode)" . RESET . "\n";
-
-        return;
-    }
-
-    $extension = $type === 'main' ? 'zip' : 'sql';
-    $filename = "update_{$versionId}.{$extension}";
-    file_put_contents(__DIR__ . '/' . $filename, $response);
-
-    echo GREEN . "Update downloaded!" . RESET . "\n";
-    echo "  Saved to: $filename\n";
-    echo "  Size: " . number_format(strlen($response)) . " bytes\n";
 }
 
 printHeader();
@@ -372,27 +250,25 @@ while (true) {
     switch ($choice) {
         case '1':
             checkConnection();
+
             break;
         case '2':
             activateLicense();
+
             break;
         case '3':
             verifyLicense();
+
             break;
         case '4':
             deactivateLicense();
+
             break;
         case '5':
-            checkForUpdate();
-            break;
-        case '6':
-            downloadUpdate();
-            break;
-        case '7':
             echo "\nGoodbye!\n";
             exit(0);
         default:
-            echo RED . "Invalid choice. Please enter 1-7." . RESET . "\n";
+            echo RED . 'Invalid choice. Please enter 1-5.' . RESET . "\n";
     }
 
     echo "\n";
