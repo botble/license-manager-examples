@@ -2,10 +2,6 @@
 
 namespace App\Providers;
 
-use App\Console\Commands\LicenseActivateCommand;
-use App\Console\Commands\LicenseDeactivateCommand;
-use App\Console\Commands\LicenseStatusCommand;
-use App\Console\Commands\LicenseVerifyCommand;
 use App\Services\LicenseManagerClient;
 use Illuminate\Support\ServiceProvider;
 
@@ -26,10 +22,10 @@ class LicenseManagerServiceProvider extends ServiceProvider
             ], 'license-manager-config');
 
             $this->commands([
-                LicenseActivateCommand::class,
-                LicenseVerifyCommand::class,
-                LicenseDeactivateCommand::class,
-                LicenseStatusCommand::class,
+                \App\Console\Commands\LicenseActivateCommand::class,
+                \App\Console\Commands\LicenseVerifyCommand::class,
+                \App\Console\Commands\LicenseDeactivateCommand::class,
+                \App\Console\Commands\LicenseStatusCommand::class,
             ]);
         }
     }

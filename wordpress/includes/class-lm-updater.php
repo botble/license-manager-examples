@@ -1,5 +1,4 @@
 <?php
-
 /**
  * License Manager Auto-Updater
  *
@@ -24,6 +23,7 @@ class LM_Updater
 
         add_filter('pre_set_site_transient_update_plugins', [$this, 'check_for_update']);
         add_filter('plugins_api', [$this, 'plugin_info'], 10, 3);
+        add_filter('upgrader_pre_download', [$this, 'download_with_license'], 10, 3);
         add_filter('upgrader_source_selection', [$this, 'maybe_rename_source'], 10, 4);
     }
 
@@ -116,6 +116,50 @@ class LM_Updater
                 'changelog' => $version_data['changelog'] ?? '',
             ],
         ];
+    }
+
+    /**
+     * Intercept the download to use POST with license_data authentication.
+     *
+     * WordPress default uses GET for package downloads, but the License Manager
+     * update endpoint requires POST with license_data in the body.
+     *
+     * @param bool|WP_Error $reply    Whether to bail without returning the package (default: false)
+     * @param string        $package  The package URL
+     * @param object        $upgrader The WP_Upgrader instance
+     * @return bool|string|WP_Error The local path to the downloaded package, or false to let WP handle it
+     */
+    public function download_with_license($reply, string $package, object $upgrader)
+    {
+        if (! str_contains($package, '/api/external/update/') || ! str_contains($package, '/download/')) {
+            return $reply;
+        }
+
+        $license_data = get_option('lm_license_data', '');
+
+        if (empty($license_data)) {
+            return $reply;
+        }
+
+        // Extract version_id and type from URL
+        if (! preg_match('#/api/external/update/([^/]+)/download/([^/]+)#', $package, $matches)) {
+            return $reply;
+        }
+
+        $version_id = $matches[1];
+        $type = $matches[2];
+
+        $tmp_file = wp_tempnam($package);
+
+        $result = $this->client->download_update($version_id, $type, $license_data, $tmp_file);
+
+        if (! $result['success']) {
+            @unlink($tmp_file);
+
+            return new \WP_Error('download_failed', $result['message']);
+        }
+
+        return $tmp_file;
     }
 
     /**

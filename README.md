@@ -9,6 +9,12 @@ Code examples demonstrating how to integrate with the [License Manager](https://
 | [PHP](./php/) | Standalone PHP scripts using cURL - good for any PHP application |
 | [WordPress](./wordpress/) | WordPress plugin with admin UI, auto-updates, and WP-Cron verification |
 | [Laravel](./laravel/) | Laravel package with service provider, Artisan commands, and middleware |
+| [Django](./django/) | Django app with management commands, middleware, and API views (Python 3.9+, Django 4.2+) |
+| [.NET / C#](./dotnet/) | Console/desktop app, ASP.NET Core API, and Blazor Server examples (.NET 8+) |
+| [Java](./java/) | Maven project with reusable HttpClient and interactive CLI (Java 17+) |
+| [Ruby on Rails](./rails/) | Client library, Rails controller, and Rack middleware for license gating |
+| [Python](./python/) | Client using `requests` library with interactive CLI (Python 3.9+) |
+| [Node.js](./nodejs/) | Zero-dependency client (built-in fetch), CLI demo, and Express.js server (Node 18+) |
 
 ## API Overview
 

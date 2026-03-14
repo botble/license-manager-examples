@@ -9,9 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class VerifyLicense
 {
-    public function __construct(private LicenseManagerClient $client)
-    {
-    }
+    public function __construct(private LicenseManagerClient $client) {}
 
     /**
      * Verify that the application has a valid license.
