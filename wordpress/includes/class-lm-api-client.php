@@ -1,4 +1,5 @@
 <?php
+
 /**
  * License Manager API Client
  *

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * License Manager Auto-Updater
  *
@@ -156,7 +157,7 @@ class LM_Updater
         if (! $result['success']) {
             @unlink($tmp_file);
 
-            return new \WP_Error('download_failed', $result['message']);
+            return new WP_Error('download_failed', $result['message']);
         }
 
         return $tmp_file;

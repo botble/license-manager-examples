@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Plugin Name: License Manager Client
  * Plugin URI:  https://github.com/your-org/license-manager-wordpress-example

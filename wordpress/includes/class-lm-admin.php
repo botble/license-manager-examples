@@ -88,15 +88,19 @@ class LM_Admin
         switch ($action) {
             case 'activate':
                 $this->handle_activate();
+
                 break;
             case 'deactivate':
                 $this->handle_deactivate();
+
                 break;
             case 'verify':
                 $this->handle_verify();
+
                 break;
             case 'check_connection':
                 $this->handle_check_connection();
+
                 break;
         }
     }
@@ -252,17 +256,17 @@ class LM_Admin
                         } else {
                             echo esc_html__('No Active License', 'license-manager-wp');
                         }
-                        ?>
+        ?>
                     </strong>
                 </div>
                 <?php if ($last_check) : ?>
                     <p class="lm-last-check">
                         <?php
-                        printf(
-                            esc_html__('Last verified: %s', 'license-manager-wp'),
-                            esc_html($last_check)
-                        );
-                        ?>
+        printf(
+            esc_html__('Last verified: %s', 'license-manager-wp'),
+            esc_html($last_check)
+        );
+                    ?>
                     </p>
                 <?php endif; ?>
             </div>
