@@ -26,7 +26,7 @@ public sealed class LicenseManagerClient : IDisposable
         _licenseFilePath = options.LicenseFilePath
             ?? Path.Combine(AppContext.BaseDirectory, ".license");
 
-        _http = httpClient ?? new HttpClient();
+        _http = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         _http.BaseAddress = new Uri(options.ServerUrl.TrimEnd('/'));
         _http.DefaultRequestHeaders.Add("X-API-KEY", options.ApiKey);
         _http.DefaultRequestHeaders.Add("X-API-URL", options.ApplicationUrl);
@@ -69,6 +69,14 @@ public sealed class LicenseManagerClient : IDisposable
             if (!string.IsNullOrEmpty(licenseData))
             {
                 await File.WriteAllTextAsync(_licenseFilePath, licenseData, ct);
+#if NET7_0_OR_GREATER
+                // Restrict license file to owner read/write only (0600) on Unix
+                if (!OperatingSystem.IsWindows())
+                {
+                    File.SetUnixFileMode(_licenseFilePath,
+                        UnixFileMode.UserRead | UnixFileMode.UserWrite);
+                }
+#endif
             }
         }
 
@@ -147,6 +155,13 @@ public sealed class LicenseManagerClient : IDisposable
         string type = "main",
         CancellationToken ct = default)
     {
+        // Sanitize updateId to prevent path traversal: allow only alphanumeric, dash, underscore, dot
+        if (string.IsNullOrEmpty(updateId) ||
+            !System.Text.RegularExpressions.Regex.IsMatch(updateId, @"^[a-zA-Z0-9\-_.]+$"))
+        {
+            throw new ArgumentException("Invalid updateId: must contain only alphanumeric characters, dashes, underscores, or dots.", nameof(updateId));
+        }
+
         var licenseData = await ReadLicenseDataAsync(ct);
         var payload = licenseData is not null
             ? new { license_data = licenseData }
@@ -160,15 +175,46 @@ public sealed class LicenseManagerClient : IDisposable
             request.Content = JsonContent.Create(payload, options: JsonOptions);
         }
 
-        var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
+        // Use a longer timeout for file downloads
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(120));
+
+        var response = await _http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+
+        // Check HTTP status before writing file
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cts.Token);
+            throw new HttpRequestException(
+                $"Download failed (HTTP {(int)response.StatusCode}): {errorBody[..Math.Min(errorBody.Length, 200)]}",
+                null, response.StatusCode);
+        }
 
         var extension = type == "sql" ? "sql" : "zip";
-        var filePath = Path.Combine(outputPath, $"update_{updateId}.{extension}");
+        var fileName = $"update_{updateId}.{extension}";
+        var filePath = Path.Combine(outputPath, fileName);
 
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
+        // Verify the resolved path stays inside outputPath (extra guard)
+        var resolvedPath = Path.GetFullPath(filePath);
+        var resolvedBase = Path.GetFullPath(outputPath);
+        if (!resolvedPath.StartsWith(resolvedBase + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+            resolvedPath != resolvedBase)
+        {
+            throw new InvalidOperationException("Resolved file path escapes the output directory.");
+        }
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cts.Token);
         await using var file = File.Create(filePath);
-        await stream.CopyToAsync(file, ct);
+        await stream.CopyToAsync(file, cts.Token);
+
+#if NET7_0_OR_GREATER
+        // Fix 6: restrict file permissions to owner-only on Unix (0600)
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(filePath,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite);
+        }
+#endif
 
         return filePath;
     }
@@ -192,14 +238,19 @@ public sealed class LicenseManagerClient : IDisposable
     private static async Task<T> ParseResponse<T>(
         HttpResponseMessage response, CancellationToken ct) where T : ApiResponse, new()
     {
+        // Read body once; reuse the string for both JSON parsing and error reporting
+        var body = await response.Content.ReadAsStringAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(body))
+            return new T { Status = false, Message = "Empty response from server." };
+
         try
         {
-            var result = await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct);
+            var result = JsonSerializer.Deserialize<T>(body, JsonOptions);
             return result ?? new T { Status = false, Message = "Empty response from server." };
         }
         catch (JsonException)
         {
-            var body = await response.Content.ReadAsStringAsync(ct);
             return new T
             {
                 Status = false,

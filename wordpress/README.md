@@ -94,25 +94,50 @@ $result = $client->deactivate_license($license_data);
 $result = $client->check_update('1.0.0');
 ```
 
+### Multiple Products on the Same Site
+
+When using License Manager for both a theme and a plugin on the same WordPress site, each product **must** use a unique option prefix to avoid conflicts. Change the `$option_prefix` property in the main plugin class:
+
+```php
+// In your plugin's main file:
+private string $option_prefix = 'lm_myplugin';
+
+// In your theme's functions.php:
+private string $option_prefix = 'lm_mytheme';
+```
+
+This ensures each product stores its own API settings, license data, and status in separate `wp_options` keys (e.g., `lm_myplugin_license_data` vs `lm_mytheme_license_data`).
+
 ### Theme Integration Example
 
 ```php
 // In your theme's functions.php
 require_once get_template_directory() . '/includes/class-lm-api-client.php';
+require_once get_template_directory() . '/includes/class-lm-updater.php';
+
+$option_prefix = 'lm_mytheme';
 
 $client = new LM_API_Client(
-    get_option('my_theme_api_url'),
-    get_option('my_theme_api_key'),
+    get_option($option_prefix . '_api_url'),
+    get_option($option_prefix . '_api_key'),
     'MY_PRODUCT_ID'
 );
 
+// For theme updates, use the theme's stylesheet as the slug
+$updater = new LM_Updater(
+    $client,
+    get_stylesheet(),                // theme slug instead of plugin basename
+    wp_get_theme()->get('Version'),  // current theme version
+    $option_prefix
+);
+
 // Verify on theme activation
-add_action('after_switch_theme', function () use ($client) {
-    $license_data = get_option('my_theme_license_data');
+add_action('after_switch_theme', function () use ($client, $option_prefix) {
+    $license_data = get_option($option_prefix . '_license_data');
     if ($license_data) {
         $result = $client->verify_license($license_data);
         if (!$result['is_active']) {
-            update_option('my_theme_license_status', 'invalid');
+            update_option($option_prefix . '_license_status', 'invalid');
         }
     }
 });

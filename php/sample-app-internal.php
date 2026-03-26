@@ -209,7 +209,7 @@ function getProduct(): void
     }
 
     echo YELLOW . 'Fetching product details...' . RESET . "\n";
-    $result = callApi('GET', '/api/internal/products/' . $productId);
+    $result = callApi('GET', '/api/internal/products/' . urlencode($productId));
     printResult($result);
 }
 
@@ -259,7 +259,7 @@ function getLicense(): void
     }
 
     echo YELLOW . 'Fetching license details...' . RESET . "\n";
-    $result = callApi('GET', '/api/internal/product-licenses/' . $licenseId);
+    $result = callApi('GET', '/api/internal/product-licenses/' . urlencode($licenseId));
     printResult($result);
 }
 
@@ -314,10 +314,10 @@ function toggleBlockLicense(): void
 
     if ($action === 'block') {
         echo YELLOW . 'Blocking license...' . RESET . "\n";
-        $result = callApi('POST', '/api/internal/blocked-product-licenses/' . $licenseId);
+        $result = callApi('POST', '/api/internal/blocked-product-licenses/' . urlencode($licenseId));
     } else {
         echo YELLOW . 'Unblocking license...' . RESET . "\n";
-        $result = callApi('DELETE', '/api/internal/blocked-product-licenses/' . $licenseId);
+        $result = callApi('DELETE', '/api/internal/blocked-product-licenses/' . urlencode($licenseId));
     }
 
     printResult($result);

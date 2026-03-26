@@ -18,7 +18,10 @@ public class SampleApp {
 
     // ── Configuration ───────────────────────────────────────────────────
     static final String SERVER_URL = "https://your-license-server.com";
-    static final String API_KEY = "your-api-key-here";
+    // Set LM_API_KEY environment variable — never hardcode credentials
+    static final String API_KEY = System.getenv("LM_API_KEY") != null
+            ? System.getenv("LM_API_KEY")
+            : "your-api-key-here";
     static final String APP_URL = "https://my-java-app.local";
     static final String PRODUCT_ID = "ABC12345";
     static final String LICENSE_CODE = "XXXX-XXXX-XXXX-XXXX";

@@ -51,8 +51,13 @@ final class License_Manager_WP
     private function __construct()
     {
         $this->init_client();
-        $this->admin = new LM_Admin($this->client);
-        $this->updater = new LM_Updater($this->client);
+        $this->admin = new LM_Admin($this->client, $this->option_prefix);
+        $this->updater = new LM_Updater(
+            $this->client,
+            LM_WP_PLUGIN_BASENAME,
+            LM_WP_VERSION,
+            $this->option_prefix
+        );
 
         register_activation_hook(__FILE__, [$this, 'activate']);
         register_deactivation_hook(__FILE__, [$this, 'deactivate']);
@@ -60,11 +65,18 @@ final class License_Manager_WP
         add_action('lm_daily_license_check', [$this, 'verify_license_cron']);
     }
 
+    /**
+     * Option prefix for wp_options keys.
+     * Override this in your own plugin/theme to avoid conflicts
+     * when multiple products use License Manager on the same site.
+     */
+    private string $option_prefix = 'lm';
+
     private function init_client(): void
     {
-        $api_url = get_option('lm_api_url', '');
-        $api_key = get_option('lm_api_key', '');
-        $product_id = get_option('lm_product_id', '');
+        $api_url = get_option($this->option_prefix . '_api_url', '');
+        $api_key = get_option($this->option_prefix . '_api_key', '');
+        $product_id = get_option($this->option_prefix . '_product_id', '');
 
         $this->client = new LM_API_Client($api_url, $api_key, $product_id);
     }
@@ -83,7 +95,7 @@ final class License_Manager_WP
 
     public function verify_license_cron(): void
     {
-        $license_data = get_option('lm_license_data', '');
+        $license_data = get_option($this->option_prefix . '_license_data', '');
 
         if (empty($license_data)) {
             return;
@@ -91,8 +103,8 @@ final class License_Manager_WP
 
         $result = $this->client->verify_license($license_data);
 
-        update_option('lm_license_status', $result['is_active'] ? 'active' : 'invalid');
-        update_option('lm_license_last_check', current_time('mysql'));
+        update_option($this->option_prefix . '_license_status', $result['is_active'] ? 'active' : 'invalid');
+        update_option($this->option_prefix . '_license_last_check', current_time('mysql'));
     }
 
     public function get_client(): LM_API_Client

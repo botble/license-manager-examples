@@ -56,7 +56,9 @@ class LicenseManagerClient:
         if result.get("is_active"):
             license_data = result.get("lic_response") or (result.get("data") or {}).get("license_data")
             if license_data:
-                Path(self.license_file_path).write_text(license_data)
+                path = Path(self.license_file_path)
+                path.write_text(license_data)
+                os.chmod(path, 0o600)
 
         return result
 
@@ -102,31 +104,38 @@ class LicenseManagerClient:
 
     def download_update(
         self, update_id: str, output_dir: str, file_type: str = "main"
-    ) -> str:
-        """Download an update file. Returns the saved file path."""
-        license_data = self._read_license_data()
-        body = {"license_data": license_data} if license_data else {}
+    ) -> dict[str, Any]:
+        """Download an update file. Returns a dict with 'file_path' on success."""
+        try:
+            license_data = self._read_license_data()
+            body = {"license_data": license_data} if license_data else {}
 
-        url = f"{self.server_url}/api/external/update/{requests.utils.quote(update_id)}/download/{requests.utils.quote(file_type)}"
+            url = f"{self.server_url}/api/external/update/{requests.utils.quote(update_id)}/download/{requests.utils.quote(file_type)}"
 
-        response = requests.post(
-            url,
-            json=body,
-            headers=self._headers(),
-            timeout=300,
-            stream=True,
-        )
-        response.raise_for_status()
+            response = requests.post(
+                url,
+                json=body,
+                headers=self._headers(),
+                timeout=300,
+                stream=True,
+            )
 
-        ext = "sql" if file_type == "sql" else "zip"
-        file_path = os.path.join(output_dir, f"update_{update_id}.{ext}")
-        os.makedirs(output_dir, exist_ok=True)
+            if not response.ok:
+                return {"status": False, "message": f"HTTP {response.status_code}"}
 
-        with open(file_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+            ext = "sql" if file_type == "sql" else "zip"
+            file_path = os.path.join(output_dir, f"update_{update_id}.{ext}")
+            os.makedirs(output_dir, exist_ok=True)
 
-        return file_path
+            with open(file_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            os.chmod(file_path, 0o600)
+
+            return {"status": True, "message": "Download complete.", "file_path": file_path}
+        except (requests.RequestException, OSError) as e:
+            return {"status": False, "message": str(e)}
 
     # ── Helpers ──────────────────────────────────────────────────────────
 

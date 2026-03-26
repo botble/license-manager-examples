@@ -47,7 +47,9 @@ class LicenseManagerClient
 
     if result["is_active"]
       license_data = result.dig("lic_response") || result.dig("data", "license_data")
-      File.write(@license_file_path, license_data) if license_data
+      if license_data
+        File.open(@license_file_path, "w", 0600) { |f| f.write(license_data) }
+      end
     end
 
     result
@@ -93,12 +95,15 @@ class LicenseManagerClient
   end
 
   def download_update(update_id, output_dir, type = "main")
+    # Sanitize inputs to prevent path traversal
+    raise ArgumentError, "Invalid update_id" unless update_id.to_s.match?(/\A[a-zA-Z0-9_\-]+\z/)
+    raise ArgumentError, "Invalid type" unless %w[main sql].include?(type.to_s)
+
     license_data = read_license_data
     body = license_data ? { license_data: license_data } : {}
 
     encoded_id = URI.encode_www_form_component(update_id)
-    encoded_type = URI.encode_www_form_component(type)
-    path = "/api/external/update/#{encoded_id}/download/#{encoded_type}"
+    path = "/api/external/update/#{encoded_id}/download/#{type}"
 
     uri = URI("#{@config[:server_url]}#{path}")
     request = Net::HTTP::Post.new(uri)
@@ -110,9 +115,13 @@ class LicenseManagerClient
       http.request(request)
     end
 
+    unless response.is_a?(Net::HTTPSuccess)
+      raise "Download failed: HTTP #{response.code}"
+    end
+
     ext = type == "sql" ? "sql" : "zip"
     file_path = File.join(output_dir, "update_#{update_id}.#{ext}")
-    File.binwrite(file_path, response.body)
+    File.open(file_path, "wb", 0600) { |f| f.write(response.body) }
 
     file_path
   end
@@ -159,6 +168,10 @@ class LicenseManagerClient
       http.open_timeout = 10
       http.read_timeout = 30
       http.request(request)
+    end
+
+    unless response.is_a?(Net::HTTPSuccess)
+      return { "status" => false, "is_active" => false, "message" => "HTTP error #{response.code}" }
     end
 
     JSON.parse(response.body)

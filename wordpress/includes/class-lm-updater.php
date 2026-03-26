@@ -5,6 +5,9 @@
  *
  * Hooks into WordPress's plugin update system to check for and install
  * updates from the License Manager server.
+ *
+ * Supports a configurable option prefix so multiple products (plugins/themes)
+ * can coexist without conflicting option keys or download handlers.
  */
 
 if (! defined('ABSPATH')) {
@@ -17,15 +20,39 @@ class LM_Updater
 
     private string $plugin_slug;
 
-    public function __construct(LM_API_Client $client)
-    {
+    private string $current_version;
+
+    private string $option_prefix;
+
+    /**
+     * @param LM_API_Client $client          API client instance
+     * @param string        $plugin_slug     Plugin basename (e.g., "my-plugin/my-plugin.php")
+     * @param string        $current_version Current installed version (e.g., "1.0.0")
+     * @param string        $option_prefix   Prefix for wp_options keys (default: "lm")
+     */
+    public function __construct(
+        LM_API_Client $client,
+        string $plugin_slug,
+        string $current_version,
+        string $option_prefix = 'lm'
+    ) {
         $this->client = $client;
-        $this->plugin_slug = LM_WP_PLUGIN_BASENAME;
+        $this->plugin_slug = $plugin_slug;
+        $this->current_version = $current_version;
+        $this->option_prefix = $option_prefix;
 
         add_filter('pre_set_site_transient_update_plugins', [$this, 'check_for_update']);
         add_filter('plugins_api', [$this, 'plugin_info'], 10, 3);
         add_filter('upgrader_pre_download', [$this, 'download_with_license'], 10, 3);
         add_filter('upgrader_source_selection', [$this, 'maybe_rename_source'], 10, 4);
+    }
+
+    /**
+     * Get a prefixed option value.
+     */
+    private function get_option(string $key, $default = '')
+    {
+        return get_option($this->option_prefix . '_' . $key, $default);
     }
 
     /**
@@ -40,17 +67,26 @@ class LM_Updater
             return $transient;
         }
 
-        if (get_option('lm_license_status') !== 'active' || ! $this->client->is_configured()) {
+        if ($this->get_option('license_status') !== 'active' || ! $this->client->is_configured()) {
             return $transient;
         }
 
-        $result = $this->client->check_update(LM_WP_VERSION);
+        $result = $this->client->check_update($this->current_version);
 
-        if (empty($result['update_available']) || empty($result['version'])) {
-            return $transient;
-        }
+        if (
+            empty($result['update_available'])
+            || empty($result['version'])
+            || version_compare($result['version'], $this->current_version, '<=')
+        ) {
+            // No update available — register in no_update to prevent false warnings
+            $transient->no_update[$this->plugin_slug] = (object) [
+                'slug' => dirname($this->plugin_slug),
+                'plugin' => $this->plugin_slug,
+                'new_version' => $this->current_version,
+                'url' => '',
+                'package' => '',
+            ];
 
-        if (version_compare($result['version'], LM_WP_VERSION, '<=')) {
             return $transient;
         }
 
@@ -65,7 +101,7 @@ class LM_Updater
             'slug' => dirname($this->plugin_slug),
             'plugin' => $this->plugin_slug,
             'new_version' => $result['version'],
-            'url' => get_option('lm_api_url', ''),
+            'url' => $this->get_option('api_url'),
             'package' => $download_url,
             'tested' => get_bloginfo('version'),
             'requires_php' => '7.4',
@@ -124,6 +160,7 @@ class LM_Updater
      *
      * WordPress default uses GET for package downloads, but the License Manager
      * update endpoint requires POST with license_data in the body.
+     * Only intercepts downloads for this specific product's plugin slug.
      *
      * @param bool|WP_Error $reply    Whether to bail without returning the package (default: false)
      * @param string        $package  The package URL
@@ -136,7 +173,22 @@ class LM_Updater
             return $reply;
         }
 
-        $license_data = get_option('lm_license_data', '');
+        // Only handle downloads for our own plugin — prevents conflicts when
+        // multiple products use the same License Manager server.
+        $skin = $upgrader->skin ?? null;
+        $updating_plugin = '';
+
+        if ($skin && isset($skin->plugin_info['BaseName'])) {
+            $updating_plugin = $skin->plugin_info['BaseName'];
+        } elseif ($skin && isset($skin->plugin)) {
+            $updating_plugin = $skin->plugin;
+        }
+
+        if ($updating_plugin && $updating_plugin !== $this->plugin_slug) {
+            return $reply;
+        }
+
+        $license_data = $this->get_option('license_data');
 
         if (empty($license_data)) {
             return $reply;
@@ -174,9 +226,10 @@ class LM_Updater
      */
     public function maybe_rename_source(string $source, string $remote_source, object $upgrader, $hook_extra): string
     {
+        $hook_extra = (array) $hook_extra;
         $plugin = $hook_extra['plugin'] ?? '';
 
-        if ($plugin !== $this->plugin_slug) {
+        if (empty($plugin) || $plugin !== $this->plugin_slug) {
             return $source;
         }
 

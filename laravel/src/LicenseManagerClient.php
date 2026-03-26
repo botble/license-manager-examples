@@ -87,8 +87,11 @@ class LicenseManagerClient
 
         $cacheKey = 'license_manager.verification.' . md5($licenseData);
 
-        if ($this->cacheTtl > 0 && Cache::has($cacheKey)) {
-            return Cache::get($cacheKey);
+        if ($this->cacheTtl > 0) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                return $cached;
+            }
         }
 
         $result = $this->request('POST', '/api/external/license/verify', [
@@ -166,6 +169,24 @@ class LicenseManagerClient
      */
     public function downloadUpdate(string $versionId, string $type = 'main', ?string $savePath = null): array
     {
+        // Sanitize $type to prevent path traversal — only allow known safe values
+        if (! in_array($type, ['main', 'sql'], true)) {
+            return [
+                'success' => false,
+                'path' => null,
+                'message' => 'Invalid update type.',
+            ];
+        }
+
+        // Sanitize $versionId — allow only alphanumeric, dashes, underscores, and dots
+        if (! preg_match('/^[a-zA-Z0-9_\-\.]+$/', $versionId)) {
+            return [
+                'success' => false,
+                'path' => null,
+                'message' => 'Invalid version ID.',
+            ];
+        }
+
         $licenseData = $this->getLicenseData();
 
         $body = [];
@@ -180,7 +201,7 @@ class LicenseManagerClient
             ->withHeaders([
                 'X-API-KEY' => $this->apiKey,
                 'X-API-URL' => config('app.url'),
-                'X-API-IP' => request()->server('SERVER_ADDR', '127.0.0.1'),
+                'X-API-IP' => $this->getServerIp(),
                 'X-API-LANGUAGE' => config('app.locale', 'en'),
             ]);
 
@@ -207,7 +228,8 @@ class LicenseManagerClient
                 mkdir($dir, 0755, true);
             }
 
-            file_put_contents($savePath, $response->body());
+            file_put_contents($savePath, $response->body(), LOCK_EX);
+            chmod($savePath, 0600);
 
             return [
                 'success' => true,
@@ -242,12 +264,21 @@ class LicenseManagerClient
     }
 
     /**
-     * Store encrypted license data.
+     * Store encrypted license data with restrictive permissions.
      */
     private function storeLicenseData(string $data): void
     {
         $path = storage_path('app/.license');
-        file_put_contents($path, $data);
+        file_put_contents($path, $data, LOCK_EX);
+        chmod($path, 0600);
+    }
+
+    /**
+     * Resolve the server IP in both web and CLI contexts.
+     */
+    private function getServerIp(): string
+    {
+        return $_SERVER['SERVER_ADDR'] ?? gethostbyname(gethostname() ?: 'localhost') ?: '127.0.0.1';
     }
 
     /**
@@ -301,7 +332,7 @@ class LicenseManagerClient
             ->withHeaders([
                 'X-API-KEY' => $this->apiKey,
                 'X-API-URL' => config('app.url'),
-                'X-API-IP' => request()->server('SERVER_ADDR', '127.0.0.1'),
+                'X-API-IP' => $this->getServerIp(),
                 'X-API-LANGUAGE' => config('app.locale', 'en'),
             ]);
 
@@ -313,6 +344,13 @@ class LicenseManagerClient
             $response = $method === 'GET'
                 ? $pending->get($url)
                 : $pending->post($url, $data ?? []);
+
+            if ($response->failed()) {
+                return [
+                    'is_active' => false,
+                    'message' => 'API request failed with HTTP ' . $response->status(),
+                ];
+            }
 
             return $response->json() ?? [
                 'is_active' => false,

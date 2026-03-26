@@ -9,8 +9,10 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -20,7 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * HTTP client for the License Manager External API.
  * Works with any Java app: desktop (Swing/JavaFX), Spring Boot, CLI, Android.
  *
- * <p>Dependencies: Java 11+, Jackson Databind.
+ * <p>Dependencies: Java 17+, Jackson Databind.
  */
 public class LicenseManagerClient implements AutoCloseable {
 
@@ -69,6 +71,15 @@ public class LicenseManagerClient implements AutoCloseable {
             }
             if (licenseData != null) {
                 Files.writeString(licenseFilePath, licenseData);
+                // Restrict license file to owner read/write only (mode 600)
+                try {
+                    Files.setPosixFilePermissions(licenseFilePath, Set.of(
+                            PosixFilePermission.OWNER_READ,
+                            PosixFilePermission.OWNER_WRITE
+                    ));
+                } catch (UnsupportedOperationException ignored) {
+                    // Non-POSIX filesystem (e.g. Windows) — skip silently
+                }
             }
         }
 
@@ -149,7 +160,13 @@ public class LicenseManagerClient implements AutoCloseable {
         String ext = "sql".equals(type) ? "sql" : "zip";
         Path outPath = Path.of(outputDir, "update_" + updateId + "." + ext);
 
-        http.send(request, HttpResponse.BodyHandlers.ofFile(outPath));
+        // Fetch as byte array to preserve binary content (zip/sql files)
+        HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) {
+            throw new IOException("Download failed: HTTP " + response.statusCode()
+                    + " — " + new String(response.body(), StandardCharsets.UTF_8));
+        }
+        Files.write(outPath, response.body());
         return outPath;
     }
 
@@ -200,7 +217,20 @@ public class LicenseManagerClient implements AutoCloseable {
         };
     }
 
-    private <T> T parseResponse(HttpResponse<String> response, Class<T> clazz) throws IOException {
+    private <T extends ApiResponse> T parseResponse(HttpResponse<String> response, Class<T> clazz)
+            throws IOException {
+        int status = response.statusCode();
+        if (status < 200 || status >= 300) {
+            // Return a typed error result without deserializing potentially non-JSON error bodies
+            try {
+                T result = clazz.getDeclaredConstructor().newInstance();
+                result.status = false;
+                result.message = "HTTP " + status + ": " + response.body();
+                return result;
+            } catch (ReflectiveOperationException e) {
+                throw new IOException("HTTP " + status + ": " + response.body());
+            }
+        }
         return json.readValue(response.body(), clazz);
     }
 

@@ -132,32 +132,49 @@ class LicenseManagerClient:
         self, update_id: str, output_dir: str, file_type: str = "main"
     ) -> str:
         """Download an update file. Returns the saved file path."""
-        license_data = self._read_license_data()
-        body: dict[str, str] = {}
-        if license_data:
-            body["license_data"] = license_data
+        if not self.is_configured():
+            raise RuntimeError("License Manager is not configured.")
 
-        url = f"{self.server_url}/api/external/update/{requests.utils.quote(update_id)}/download/{requests.utils.quote(file_type)}"
+        try:
+            license_data = self._read_license_data()
+            body: dict[str, str] = {}
+            if license_data:
+                body["license_data"] = license_data
 
-        response = requests.post(
-            url,
-            json=body,
-            headers=self._headers(),
-            timeout=300,
-            verify=self.verify_ssl,
-            stream=True,
-        )
-        response.raise_for_status()
+            url = f"{self.server_url}/api/external/update/{requests.utils.quote(update_id)}/download/{requests.utils.quote(file_type)}"
 
-        ext = "sql" if file_type == "sql" else "zip"
-        os.makedirs(output_dir, exist_ok=True)
-        file_path = os.path.join(output_dir, f"update_{update_id}.{ext}")
+            response = requests.post(
+                url,
+                json=body,
+                headers=self._headers(),
+                timeout=300,
+                verify=self.verify_ssl,
+                stream=True,
+            )
+            response.raise_for_status()
 
-        with open(file_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
+            # Verify Content-Type before writing to disk
+            content_type = response.headers.get("Content-Type", "")
+            allowed_types = ("application/zip", "application/octet-stream", "application/x-zip-compressed")
+            if not any(ct in content_type for ct in allowed_types):
+                raise ValueError(
+                    f"Unexpected Content-Type '{content_type}'; expected a zip or binary stream."
+                )
 
-        return file_path
+            ext = "sql" if file_type == "sql" else "zip"
+            os.makedirs(output_dir, exist_ok=True)
+            file_path = os.path.join(output_dir, f"update_{update_id}.{ext}")
+
+            # Write with restricted permissions (owner read/write only)
+            fd = os.open(file_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+
+            return file_path
+        except (requests.RequestException, ValueError, OSError) as e:
+            logger.exception("License Manager download_update error")
+            raise
 
     # -- License file helpers --------------------------------------------------
 
@@ -165,7 +182,10 @@ class LicenseManagerClient:
         return Path(self.license_file).exists()
 
     def _store_license_data(self, data: str) -> None:
-        Path(self.license_file).write_text(data)
+        # Write with restricted permissions so only the process owner can read/write
+        fd = os.open(self.license_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(data)
 
     def _read_license_data(self) -> str | None:
         path = Path(self.license_file)

@@ -68,11 +68,10 @@ def main():
         elif choice == "6":
             update_id = input("Update ID (from update check): ").strip()
             dl_type = input("Type (main/sql) [main]: ").strip() or "main"
-            try:
-                file_path = client.download_update(update_id, ".", dl_type)
-                print(f"  [OK] Downloaded: {file_path}")
-            except Exception as e:
-                print(f"  [FAILED] Download: {e}")
+            result = client.download_update(update_id, ".", dl_type)
+            print_result("Download", result)
+            if result.get("status") and result.get("file_path"):
+                print(f"  Saved to: {result['file_path']}")
 
         elif choice == "7":
             print("Goodbye!")
@@ -85,7 +84,7 @@ def main():
 
 
 def print_result(operation: str, result: dict):
-    status = "OK" if result.get("is_active") else "FAILED"
+    status = "OK" if result.get("status") else "FAILED"
     print(f"  [{status}] {operation}: {result.get('message', 'No message')}")
 
 

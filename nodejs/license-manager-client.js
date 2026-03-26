@@ -29,6 +29,10 @@ class LicenseManagerClient {
    * @param {number} [options.timeout=30000] - Request timeout in ms
    */
   constructor(options) {
+    if (!options.serverUrl) throw new Error('LicenseManagerClient: options.serverUrl is required');
+    if (!options.apiKey) throw new Error('LicenseManagerClient: options.apiKey is required');
+    if (!options.productId && options.productId !== undefined) throw new Error('LicenseManagerClient: options.productId must be a non-empty string');
+
     this.serverUrl = options.serverUrl.replace(/\/+$/, '');
     this.apiKey = options.apiKey;
     this.applicationUrl = options.applicationUrl;
@@ -57,7 +61,7 @@ class LicenseManagerClient {
     if (result.is_active) {
       const licenseData = result.lic_response || result.data?.license_data;
       if (licenseData) {
-        fs.writeFileSync(this.licenseFilePath, licenseData, 'utf8');
+        fs.writeFileSync(this.licenseFilePath, licenseData, { encoding: 'utf8', mode: 0o600 });
       }
     }
 
@@ -172,6 +176,11 @@ class LicenseManagerClient {
         headers: this._headers(),
         signal: AbortSignal.timeout(this.timeout),
       });
+      if (!response.ok) {
+        let errorBody = { status: false, is_active: false, message: `HTTP ${response.status}` };
+        try { errorBody = await response.json(); } catch (_) {}
+        return errorBody;
+      }
       return response.json();
     } catch (error) {
       return { status: false, is_active: false, message: error.message };
@@ -186,6 +195,11 @@ class LicenseManagerClient {
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(this.timeout),
       });
+      if (!response.ok) {
+        let errorBody = { status: false, is_active: false, message: `HTTP ${response.status}` };
+        try { errorBody = await response.json(); } catch (_) {}
+        return errorBody;
+      }
       return response.json();
     } catch (error) {
       return { status: false, is_active: false, message: error.message };

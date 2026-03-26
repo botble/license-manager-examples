@@ -98,9 +98,9 @@ class LicensesController < ApplicationController
 
   def build_client
     LicenseManagerClient.new(
-      server_url: ENV.fetch("LM_SERVER_URL", "https://your-license-server.com"),
-      api_key: ENV.fetch("LM_API_KEY", "your-api-key"),
-      application_url: ENV.fetch("LM_APP_URL", "https://your-app.com")
+      server_url: ENV.fetch("LM_SERVER_URL"),
+      api_key: ENV.fetch("LM_API_KEY"),
+      application_url: ENV.fetch("LM_APP_URL")
     )
   end
 end

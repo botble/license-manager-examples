@@ -13,15 +13,46 @@ class LM_Admin
 {
     private LM_API_Client $client;
 
-    public function __construct(LM_API_Client $client)
+    private string $option_prefix;
+
+    /**
+     * @param LM_API_Client $client        API client instance
+     * @param string        $option_prefix Prefix for wp_options keys (default: "lm")
+     */
+    public function __construct(LM_API_Client $client, string $option_prefix = 'lm')
     {
         $this->client = $client;
+        $this->option_prefix = $option_prefix;
 
         add_action('admin_menu', [$this, 'add_menu_page']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_init', [$this, 'handle_actions']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_notices', [$this, 'show_license_notices']);
+    }
+
+    /**
+     * Get a prefixed option value.
+     */
+    private function get_option(string $key, $default = '')
+    {
+        return get_option($this->option_prefix . '_' . $key, $default);
+    }
+
+    /**
+     * Update a prefixed option value.
+     */
+    private function update_option(string $key, $value): bool
+    {
+        return update_option($this->option_prefix . '_' . $key, $value);
+    }
+
+    /**
+     * Delete a prefixed option value.
+     */
+    private function delete_option(string $key): bool
+    {
+        return delete_option($this->option_prefix . '_' . $key);
     }
 
     public function add_menu_page(): void
@@ -37,15 +68,17 @@ class LM_Admin
 
     public function register_settings(): void
     {
-        register_setting('lm_settings', 'lm_api_url', [
+        $group = $this->option_prefix . '_settings';
+
+        register_setting($group, $this->option_prefix . '_api_url', [
             'type' => 'string',
             'sanitize_callback' => 'esc_url_raw',
         ]);
-        register_setting('lm_settings', 'lm_api_key', [
+        register_setting($group, $this->option_prefix . '_api_key', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
         ]);
-        register_setting('lm_settings', 'lm_product_id', [
+        register_setting($group, $this->option_prefix . '_product_id', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
         ]);
@@ -128,24 +161,24 @@ class LM_Admin
             $license_data = $result['lic_response'] ?? $result['data']['license_data'] ?? '';
 
             if (! empty($license_data)) {
-                update_option('lm_license_data', $license_data);
+                $this->update_option('license_data', $license_data);
             }
 
-            update_option('lm_license_code', $license_code);
-            update_option('lm_client_name', $client_name);
-            update_option('lm_license_status', 'active');
-            update_option('lm_license_last_check', current_time('mysql'));
+            $this->update_option('license_code', $license_code);
+            $this->update_option('client_name', $client_name);
+            $this->update_option('license_status', 'active');
+            $this->update_option('license_last_check', current_time('mysql'));
 
             $this->add_notice('success', $result['message'] ?? __('License activated successfully!', 'license-manager-wp'));
         } else {
-            update_option('lm_license_status', 'inactive');
+            $this->update_option('license_status', 'inactive');
             $this->add_notice('error', $result['message'] ?? __('Activation failed.', 'license-manager-wp'));
         }
     }
 
     private function handle_deactivate(): void
     {
-        $license_data = get_option('lm_license_data', '');
+        $license_data = $this->get_option('license_data');
 
         if (empty($license_data)) {
             $this->add_notice('error', __('No active license to deactivate.', 'license-manager-wp'));
@@ -156,8 +189,8 @@ class LM_Admin
         $result = $this->client->deactivate_license($license_data);
 
         if (! empty($result['is_active'])) {
-            delete_option('lm_license_data');
-            update_option('lm_license_status', 'inactive');
+            $this->delete_option('license_data');
+            $this->update_option('license_status', 'inactive');
             $this->add_notice('success', $result['message'] ?? __('License deactivated.', 'license-manager-wp'));
         } else {
             $this->add_notice('error', $result['message'] ?? __('Deactivation failed.', 'license-manager-wp'));
@@ -166,7 +199,7 @@ class LM_Admin
 
     private function handle_verify(): void
     {
-        $license_data = get_option('lm_license_data', '');
+        $license_data = $this->get_option('license_data');
 
         if (empty($license_data)) {
             $this->add_notice('error', __('No license data found. Activate a license first.', 'license-manager-wp'));
@@ -176,13 +209,13 @@ class LM_Admin
 
         $result = $this->client->verify_license($license_data);
 
-        update_option('lm_license_last_check', current_time('mysql'));
+        $this->update_option('license_last_check', current_time('mysql'));
 
         if (! empty($result['is_active'])) {
-            update_option('lm_license_status', 'active');
+            $this->update_option('license_status', 'active');
             $this->add_notice('success', $result['message'] ?? __('License is valid!', 'license-manager-wp'));
         } else {
-            update_option('lm_license_status', 'invalid');
+            $this->update_option('license_status', 'invalid');
             $this->add_notice('error', $result['message'] ?? __('License is invalid.', 'license-manager-wp'));
         }
     }
@@ -206,7 +239,8 @@ class LM_Admin
 
     public function show_license_notices(): void
     {
-        $notices = get_transient('lm_admin_notices');
+        $transient_key = $this->option_prefix . '_admin_notices';
+        $notices = get_transient($transient_key);
 
         if (empty($notices) || ! is_array($notices)) {
             return;
@@ -220,14 +254,15 @@ class LM_Admin
             );
         }
 
-        delete_transient('lm_admin_notices');
+        delete_transient($transient_key);
     }
 
     private function add_notice(string $type, string $message): void
     {
-        $notices = get_transient('lm_admin_notices') ?: [];
+        $transient_key = $this->option_prefix . '_admin_notices';
+        $notices = get_transient($transient_key) ?: [];
         $notices[] = ['type' => $type, 'message' => $message];
-        set_transient('lm_admin_notices', $notices, 60);
+        set_transient($transient_key, $notices, 60);
     }
 
     public function render_page(): void
@@ -236,8 +271,8 @@ class LM_Admin
             return;
         }
 
-        $license_status = get_option('lm_license_status', 'inactive');
-        $last_check = get_option('lm_license_last_check', '');
+        $license_status = $this->get_option('license_status', 'inactive');
+        $last_check = $this->get_option('license_last_check');
         $is_active = $license_status === 'active';
         ?>
         <div class="wrap lm-admin-wrap">
@@ -274,29 +309,33 @@ class LM_Admin
             <!-- API Settings -->
             <div class="lm-card">
                 <h2><?php echo esc_html__('API Settings', 'license-manager-wp'); ?></h2>
+                <?php
+                    $p = $this->option_prefix;
+                    $group = $p . '_settings';
+                ?>
                 <form method="post" action="options.php">
-                    <?php settings_fields('lm_settings'); ?>
+                    <?php settings_fields($group); ?>
                     <table class="form-table">
                         <tr>
                             <th scope="row">
-                                <label for="lm_api_url"><?php echo esc_html__('API URL', 'license-manager-wp'); ?></label>
+                                <label for="<?php echo esc_attr($p); ?>_api_url"><?php echo esc_html__('API URL', 'license-manager-wp'); ?></label>
                             </th>
                             <td>
-                                <input type="url" id="lm_api_url" name="lm_api_url"
-                                       value="<?php echo esc_attr(get_option('lm_api_url', '')); ?>"
+                                <input type="url" id="<?php echo esc_attr($p); ?>_api_url" name="<?php echo esc_attr($p); ?>_api_url"
+                                       value="<?php echo esc_attr($this->get_option('api_url')); ?>"
                                        class="regular-text" placeholder="https://license.example.com" />
                                 <p class="description"><?php echo esc_html__('Your License Manager server URL.', 'license-manager-wp'); ?></p>
                             </td>
                         </tr>
                         <tr>
                             <th scope="row">
-                                <label for="lm_api_key"><?php echo esc_html__('API Key', 'license-manager-wp'); ?></label>
+                                <label for="<?php echo esc_attr($p); ?>_api_key"><?php echo esc_html__('API Key', 'license-manager-wp'); ?></label>
                             </th>
                             <td>
-                                <input type="password" id="lm_api_key" name="lm_api_key"
-                                       value="<?php echo esc_attr(get_option('lm_api_key', '')); ?>"
+                                <input type="password" id="<?php echo esc_attr($p); ?>_api_key" name="<?php echo esc_attr($p); ?>_api_key"
+                                       value="<?php echo esc_attr($this->get_option('api_key')); ?>"
                                        class="regular-text" autocomplete="off" />
-                                <button type="button" class="button lm-toggle-password" data-target="lm_api_key">
+                                <button type="button" class="button lm-toggle-password" data-target="<?php echo esc_attr($p); ?>_api_key">
                                     <?php echo esc_html__('Show', 'license-manager-wp'); ?>
                                 </button>
                                 <p class="description"><?php echo esc_html__('External API key from License Manager settings.', 'license-manager-wp'); ?></p>
@@ -304,11 +343,11 @@ class LM_Admin
                         </tr>
                         <tr>
                             <th scope="row">
-                                <label for="lm_product_id"><?php echo esc_html__('Product ID', 'license-manager-wp'); ?></label>
+                                <label for="<?php echo esc_attr($p); ?>_product_id"><?php echo esc_html__('Product ID', 'license-manager-wp'); ?></label>
                             </th>
                             <td>
-                                <input type="text" id="lm_product_id" name="lm_product_id"
-                                       value="<?php echo esc_attr(get_option('lm_product_id', '')); ?>"
+                                <input type="text" id="<?php echo esc_attr($p); ?>_product_id" name="<?php echo esc_attr($p); ?>_product_id"
+                                       value="<?php echo esc_attr($this->get_option('product_id')); ?>"
                                        class="regular-text" placeholder="ABC12345" />
                                 <p class="description"><?php echo esc_html__('Product Reference ID from License Manager.', 'license-manager-wp'); ?></p>
                             </td>
@@ -340,11 +379,11 @@ class LM_Admin
                         <table class="lm-info-table">
                             <tr>
                                 <td><strong><?php echo esc_html__('License Code', 'license-manager-wp'); ?></strong></td>
-                                <td><code><?php echo esc_html(get_option('lm_license_code', '')); ?></code></td>
+                                <td><code><?php echo esc_html($this->get_option('license_code')); ?></code></td>
                             </tr>
                             <tr>
                                 <td><strong><?php echo esc_html__('Client Name', 'license-manager-wp'); ?></strong></td>
-                                <td><?php echo esc_html(get_option('lm_client_name', '')); ?></td>
+                                <td><?php echo esc_html($this->get_option('client_name')); ?></td>
                             </tr>
                         </table>
                     </div>
@@ -371,7 +410,7 @@ class LM_Admin
                                 </th>
                                 <td>
                                     <input type="text" id="lm_license_code" name="lm_license_code"
-                                           value="<?php echo esc_attr(get_option('lm_license_code', '')); ?>"
+                                           value="<?php echo esc_attr($this->get_option('license_code')); ?>"
                                            class="regular-text" placeholder="XXXX-XXXX-XXXX-XXXX" required />
                                 </td>
                             </tr>
@@ -381,7 +420,7 @@ class LM_Admin
                                 </th>
                                 <td>
                                     <input type="text" id="lm_client_name" name="lm_client_name"
-                                           value="<?php echo esc_attr(get_option('lm_client_name', '')); ?>"
+                                           value="<?php echo esc_attr($this->get_option('client_name')); ?>"
                                            class="regular-text" placeholder="John Doe" required />
                                     <p class="description"><?php echo esc_html__('The buyer/customer name associated with the license.', 'license-manager-wp'); ?></p>
                                 </td>

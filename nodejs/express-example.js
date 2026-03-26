@@ -37,42 +37,75 @@ const client = new LicenseManagerClient({
 // ── Endpoints ───────────────────────────────────────────────────────────
 
 app.get('/license/connection', async (req, res) => {
-  const result = await client.checkConnection();
-  res.json(result);
+  try {
+    const result = await client.checkConnection();
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ status: false, message: e.message });
+  }
 });
 
 app.post('/license/activate', async (req, res) => {
-  const { product_id, license_code, client_name } = req.body;
-  const result = await client.activateLicense(product_id, license_code, client_name);
-  res.status(result.is_active ? 200 : 400).json(result);
+  try {
+    const { product_id, license_code, client_name } = req.body;
+    if (!product_id || !license_code || !client_name) {
+      return res.status(400).json({ status: false, message: 'product_id, license_code, and client_name are required' });
+    }
+    const result = await client.activateLicense(product_id, license_code, client_name);
+    res.status(result.is_active ? 200 : 400).json(result);
+  } catch (e) {
+    res.status(500).json({ status: false, message: e.message });
+  }
 });
 
 app.get('/license/verify/:productId', async (req, res) => {
-  const result = await client.verifyLicense(req.params.productId);
-  res.status(result.is_active ? 200 : 403).json(result);
+  try {
+    const result = await client.verifyLicense(req.params.productId);
+    res.status(result.is_active ? 200 : 403).json(result);
+  } catch (e) {
+    res.status(500).json({ status: false, message: e.message });
+  }
 });
 
 app.post('/license/deactivate/:productId', async (req, res) => {
-  const result = await client.deactivateLicense(req.params.productId);
-  res.json(result);
+  try {
+    const result = await client.deactivateLicense(req.params.productId);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ status: false, message: e.message });
+  }
 });
 
 app.post('/license/update-check', async (req, res) => {
-  const { product_id, current_version } = req.body;
-  const result = await client.checkForUpdate(product_id, current_version);
-  res.json(result);
+  try {
+    const { product_id, current_version } = req.body;
+    if (!product_id || !current_version) {
+      return res.status(400).json({ status: false, message: 'product_id and current_version are required' });
+    }
+    const result = await client.checkForUpdate(product_id, current_version);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ status: false, message: e.message });
+  }
 });
 
 app.get('/license/latest/:productId', async (req, res) => {
-  const result = await client.getLatestVersion(req.params.productId);
-  res.json(result);
+  try {
+    const result = await client.getLatestVersion(req.params.productId);
+    res.json(result);
+  } catch (e) {
+    res.status(500).json({ status: false, message: e.message });
+  }
 });
 
 app.post('/license/update-download', async (req, res) => {
-  const { update_id, type } = req.body;
   try {
+    const { update_id, type } = req.body;
+    if (!update_id) {
+      return res.status(400).json({ success: false, message: 'update_id is required' });
+    }
     const filePath = await client.downloadUpdate(update_id, './updates', type || 'main');
-    res.json({ success: true, path: filePath });
+    res.json({ success: true, filename: require('path').basename(filePath) });
   } catch (e) {
     res.status(400).json({ success: false, message: e.message });
   }

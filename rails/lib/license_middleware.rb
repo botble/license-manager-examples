@@ -10,12 +10,18 @@
 #     cache_ttl: 300
 #
 class LicenseMiddleware
+  NETWORK_ERRORS = [
+    Net::OpenTimeout, Net::ReadTimeout, Net::HTTPError,
+    Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT,
+    SocketError, OpenSSL::SSL::SSLError, JSON::ParserError
+  ].freeze
+
+  CACHE_KEY = "license_middleware:valid"
+
   def initialize(app, product_id:, cache_ttl: 300)
     @app = app
     @product_id = product_id
     @cache_ttl = cache_ttl
-    @cached_result = nil
-    @cached_at = nil
   end
 
   def call(env)
@@ -30,15 +36,14 @@ class LicenseMiddleware
   private
 
   def license_valid?
-    if @cached_result && @cached_at && (Time.now - @cached_at < @cache_ttl)
-      return @cached_result
-    end
+    cached = Rails.cache.read(CACHE_KEY)
+    return cached unless cached.nil?
 
     result = license_client.verify_license(@product_id)
-    @cached_result = result["is_active"] == true
-    @cached_at = Time.now
-    @cached_result
-  rescue StandardError => e
+    valid = result["is_active"] == true
+    Rails.cache.write(CACHE_KEY, valid, expires_in: @cache_ttl)
+    valid
+  rescue *NETWORK_ERRORS => e
     Rails.logger.error("License verification failed: #{e.message}") if defined?(Rails)
     # Allow access on network errors to avoid blocking users
     true

@@ -70,6 +70,7 @@ $licenseCode = $config['license_code'];
 $clientName = $config['client_name'];
 $appUrl = $config['app_url'];
 $licenseFile = __DIR__ . '/.license';
+$serverIp = $_SERVER['SERVER_ADDR'] ?? gethostbyname(gethostname()) ?: '127.0.0.1';
 
 define('GREEN', "\033[32m");
 define('RED', "\033[31m");
@@ -100,7 +101,7 @@ function printMenu(): void
 
 function callApi(string $method, string $endpoint, ?array $data = null): array
 {
-    global $apiUrl, $apiKey, $appUrl;
+    global $apiUrl, $apiKey, $appUrl, $serverIp;
 
     $curl = curl_init();
     $url = $apiUrl . $endpoint;
@@ -113,7 +114,7 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
             'Content-Type: application/json',
             'X-API-KEY: ' . $apiKey,
             'X-API-URL: ' . $appUrl,
-            'X-API-IP: 127.0.0.1',
+            'X-API-IP: ' . $serverIp,
             'X-API-LANGUAGE: en',
         ],
     ]);
@@ -132,6 +133,15 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
 
     if ($error) {
         return ['error' => $error, 'http_code' => 0];
+    }
+
+    if ($httpCode < 200 || $httpCode >= 300) {
+        $decoded = json_decode($response, true);
+        return [
+            'error' => ($decoded['message'] ?? "HTTP $httpCode"),
+            'data' => $decoded,
+            'http_code' => $httpCode,
+        ];
     }
 
     return [
@@ -177,6 +187,7 @@ function activateLicense(): void
 
         if ($licenseData) {
             file_put_contents($licenseFile, $licenseData);
+            chmod($licenseFile, 0600);
             echo "  License data saved to: .license\n";
         }
     } else {
@@ -284,7 +295,7 @@ function checkForUpdate(): void
 
 function downloadUpdate(): void
 {
-    global $apiUrl, $apiKey, $appUrl, $licenseFile;
+    global $apiUrl, $apiKey, $appUrl, $serverIp, $licenseFile;
 
     echo "\n" . YELLOW . 'Downloading update...' . RESET . "\n";
 
@@ -308,10 +319,20 @@ function downloadUpdate(): void
 
     $url = $apiUrl . '/api/external/update/' . urlencode($versionId) . '/download/' . urlencode($type);
 
+    $extension = $type === 'main' ? 'zip' : 'sql';
+    $filename = "update_{$versionId}.{$extension}";
+    $outputPath = __DIR__ . '/' . $filename;
+
+    $fp = fopen($outputPath, 'wb');
+    if (! $fp) {
+        echo RED . "Download failed: unable to open output file." . RESET . "\n";
+
+        return;
+    }
+
     $curl = curl_init();
     curl_setopt_array($curl, [
         CURLOPT_URL => $url,
-        CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT => 120,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => json_encode($data),
@@ -319,48 +340,45 @@ function downloadUpdate(): void
             'Content-Type: application/json',
             'X-API-KEY: ' . $apiKey,
             'X-API-URL: ' . $appUrl,
-            'X-API-IP: 127.0.0.1',
+            'X-API-IP: ' . $serverIp,
             'X-API-LANGUAGE: en',
         ],
+        CURLOPT_FILE => $fp,
+        CURLOPT_HEADER => false,
     ]);
 
-    $response = curl_exec($curl);
+    curl_exec($curl);
     $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-    $contentType = curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
     $error = curl_error($curl);
     curl_close($curl);
+    fclose($fp);
 
     if ($error) {
+        @unlink($outputPath);
         echo RED . "Download failed: $error" . RESET . "\n";
 
         return;
     }
 
-    if ($httpCode === 401) {
-        echo RED . 'Unauthorized! License validation failed.' . RESET . "\n";
-
-        return;
-    }
-
-    if ($httpCode === 404) {
-        echo RED . 'Not found! Version ID or file type is invalid.' . RESET . "\n";
-
-        return;
-    }
-
     if ($httpCode !== 200) {
-        echo RED . "Download failed (HTTP $httpCode)" . RESET . "\n";
+        @unlink($outputPath);
+
+        if ($httpCode === 401) {
+            echo RED . 'Unauthorized! License validation failed.' . RESET . "\n";
+        } elseif ($httpCode === 404) {
+            echo RED . 'Not found! Version ID or file type is invalid.' . RESET . "\n";
+        } else {
+            echo RED . "Download failed (HTTP $httpCode)" . RESET . "\n";
+        }
 
         return;
     }
 
-    $extension = $type === 'main' ? 'zip' : 'sql';
-    $filename = "update_{$versionId}.{$extension}";
-    file_put_contents(__DIR__ . '/' . $filename, $response);
+    chmod($outputPath, 0600);
 
     echo GREEN . 'Update downloaded!' . RESET . "\n";
     echo "  Saved to: $filename\n";
-    echo '  Size: ' . number_format(strlen($response)) . " bytes\n";
+    echo '  Size: ' . number_format(filesize($outputPath)) . " bytes\n";
 }
 
 printHeader();
