@@ -137,6 +137,7 @@ function callApi(string $method, string $endpoint, ?array $data = null): array
 
     if ($httpCode < 200 || $httpCode >= 300) {
         $decoded = json_decode($response, true);
+
         return [
             'error' => ($decoded['message'] ?? "HTTP $httpCode"),
             'data' => $decoded,
@@ -325,7 +326,7 @@ function downloadUpdate(): void
 
     $fp = fopen($outputPath, 'wb');
     if (! $fp) {
-        echo RED . "Download failed: unable to open output file." . RESET . "\n";
+        echo RED . 'Download failed: unable to open output file.' . RESET . "\n";
 
         return;
     }

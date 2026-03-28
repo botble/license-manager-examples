@@ -311,8 +311,8 @@ class LM_Admin
                 <h2><?php echo esc_html__('API Settings', 'license-manager-wp'); ?></h2>
                 <?php
                     $p = $this->option_prefix;
-                    $group = $p . '_settings';
-                ?>
+        $group = $p . '_settings';
+        ?>
                 <form method="post" action="options.php">
                     <?php settings_fields($group); ?>
                     <table class="form-table">

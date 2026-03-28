@@ -169,6 +169,12 @@ class LM_Updater
      */
     public function download_with_license($reply, string $package, object $upgrader)
     {
+        // Only handle plugin updates — prevents conflicts when both a theme
+        // and a plugin use License Manager on the same site.
+        if (! $upgrader instanceof \Plugin_Upgrader) {
+            return $reply;
+        }
+
         if (! str_contains($package, '/api/external/update/') || ! str_contains($package, '/download/')) {
             return $reply;
         }
